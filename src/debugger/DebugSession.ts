@@ -9,7 +9,7 @@ export abstract class DebugSession extends LoggingDebugSession {
 
     protected ext: string[] = ['.lua'];
     private _findFileSeq = 0;
-    private _fileCache = new Map<string, string>();
+    protected _fileCache = new Map<string, string>();
 
 	log(obj: any) {
 		this.sendEvent(new Event("log", obj));

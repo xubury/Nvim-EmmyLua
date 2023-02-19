@@ -5,12 +5,13 @@ import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, Event } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
-import { readFileSync } from "fs";
-import { join, normalize } from "path";
+import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
+import { join, normalize, isAbsolute, parse } from "path";
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
     extensionPath: string;
     sourcePaths: string[];
+    codePaths: string[];
     host: string;
     port: number;
     ext: string[];
@@ -34,6 +35,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     private listenMode = false;
     private breakpoints: proto.IBreakPoint[] = [];
     protected extensionPath: string = '';
+    private codePaths: string[] = [];
 
     handles = new Handles<IEmmyStackNode>();
 
@@ -51,6 +53,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
 
     protected launchRequest(response: DebugProtocol.LaunchResponse, args: EmmyDebugArguments): void {
         this.ext = args.ext;
+        this.codePaths = args.codePaths;
         this.extensionPath = args.extensionPath;
         if (!args.ideConnectDebugger) {
             this.listenMode = true;
@@ -204,14 +207,23 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             const stacks = this.breakNotify.stacks;
             for (let i = 0; i < stacks.length; i++) {
                 const stack = stacks[i];
-                let file = stack.file;
+                let fullFilename = "";
+                let filename = stack.file;
                 if (stack.line >= 0) {
-                    file = await this.findFile(stack.file);
+                    if ( filename[0] == "." && (filename[1] == "/" || filename[1] == "\\")) {
+                        filename = filename.substring(2);
+                    }
+                    for (let j = 0; j < this.codePaths.length; j++) {
+                        fullFilename = this._findFile(this.codePaths[j], filename);
+                        if (fullFilename !== "") {
+                            break;
+                        }
+                    }
                 }
                 else if (i < stacks.length - 1) {
                     continue;
                 }
-                let source = new Source(stack.file, file);
+                let source = new Source(stack.file, fullFilename);
                 stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
             }
             response.body = {
@@ -220,6 +232,51 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             };
         }
         this.sendResponse(response);
+    }
+    protected _findFile(startPath: string, file: string): string {
+        if (isAbsolute(file)) {
+            return file;
+        }
+        const r = this._fileCache.get(file)
+        if (r) {
+            return r;
+        }
+
+        if (!existsSync(startPath)) {
+            this.sendEvent(new OutputEvent(`fromDir:ERROR:startPath:${startPath},filter:${file}.\n`));
+            return "";
+        }
+        var files = readdirSync(startPath);
+        for (var i = 0; i < files.length; i++) {
+            var filename = join(startPath, files[i]);
+            var stat = lstatSync(filename);
+            if (stat.isDirectory()) {
+                this._findFile(filename, file); //recurse
+                continue;
+            } else if (!this.ext.includes(parse(files[i]).ext)) {
+                // skip non-target file
+                continue;
+            }
+            // match filename
+            if (filename.indexOf(file) >= 0) {
+                // cache max match filename
+                const r = this._fileCache.get(file);
+                if (r && r.length < filename.length) {
+                    this._fileCache.set(file, filename);
+                } else {
+                    this._fileCache.set(file, filename);
+                }
+            }
+        }
+
+        {
+            const r = this._fileCache.get(file);
+            if (r) {
+                return r;
+            }
+        }
+
+        return ""
     }
 
     protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
