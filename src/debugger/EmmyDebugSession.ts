@@ -6,7 +6,7 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, Event } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
-import { join, normalize, isAbsolute, parse } from "path";
+import { join, dirname, normalize, isAbsolute, parse } from "path";
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
     extensionPath: string;
@@ -34,10 +34,15 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     private evalIdCount = 0;
     private listenMode = false;
     private breakpoints: proto.IBreakPoint[] = [];
-    protected extensionPath: string = '';
+    private extensionPath: string = '';
     private codePaths: string[] = [];
 
     handles = new Handles<IEmmyStackNode>();
+
+    constructor() {
+        super()
+        this.extensionPath = normalize(join(dirname(process.argv[1]), "..", ".."));
+    }
 
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
         response.body = {
@@ -54,7 +59,6 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     protected launchRequest(response: DebugProtocol.LaunchResponse, args: EmmyDebugArguments): void {
         this.ext = args.ext;
         this.codePaths = args.codePaths;
-        this.extensionPath = args.extensionPath;
         if (!args.ideConnectDebugger) {
             this.listenMode = true;
             const socket = net.createServer(client => {
