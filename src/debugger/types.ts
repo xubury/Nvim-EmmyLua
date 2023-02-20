@@ -2,7 +2,7 @@ import { DebugConfiguration } from 'vscode';
 
 interface DebugConfigurationBase extends DebugConfiguration {
     extensionPath: string;
-    sourcePaths: string[];
+    codePaths: string[];
     ext: string[];
 }
 
@@ -14,7 +14,6 @@ export interface EmmyAttachDebugConfiguration extends DebugConfigurationBase {
 export interface EmmyDebugConfiguration extends DebugConfigurationBase {
     host: string;
     port: number;
-    ideConnectDebugger: boolean;
 }
 
 export interface EmmyLaunchDebugConfiguration extends DebugConfigurationBase {

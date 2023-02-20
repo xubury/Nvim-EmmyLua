@@ -3,24 +3,17 @@ import * as readline from 'readline';
 import * as proto from "./EmmyDebugProto";
 import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from "vscode-debugprotocol";
-import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, Event } from "vscode-debugadapter";
+import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { join, dirname, normalize, isAbsolute, parse } from "path";
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
     extensionPath: string;
-    sourcePaths: string[];
     codePaths: string[];
     host: string;
     port: number;
     ext: string[];
-    ideConnectDebugger: boolean;
-
-    // for launch
-    program?: string;
-    arguments?: string[];
-    workingDir?: string;
 }
 
 export class EmmyDebugSession extends DebugSession implements IEmmyStackContext {
@@ -59,42 +52,18 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     protected launchRequest(response: DebugProtocol.LaunchResponse, args: EmmyDebugArguments): void {
         this.ext = args.ext;
         this.codePaths = args.codePaths;
-        if (!args.ideConnectDebugger) {
-            this.listenMode = true;
-            const socket = net.createServer(client => {
-                this.client = client;
+        // send resp
+        const client = net.connect(args.port, args.host)
+            .on('connect', () => {
                 this.sendResponse(response);
-                this.onConnect(this.client);
+                this.onConnect(client);
                 this.readClient(client);
-                this.sendEvent(new Event('onNewConnection'));
             })
-                .listen(args.port, args.host)
-                .on('listening', () => {
-                    this.sendEvent(new OutputEvent(`Server(${args.host}:${args.port}) open successfully, wait for connection...\n`));
-                })
-                .on('error', err => {
-                    this.sendEvent(new OutputEvent(`${err}`, 'stderr'));
-                    response.success = false;
-                    response.message = `${err}`;
-                    this.sendResponse(response);
-                });
-            this.socket = socket;
-            this.sendEvent(new Event('showWaitConnection'));
-        }
-        else {
-            // send resp
-            const client = net.connect(args.port, args.host)
-                .on('connect', () => {
-                    this.sendResponse(response);
-                    this.onConnect(client);
-                    this.readClient(client);
-                })
-                .on('error', err => {
-                    response.success = false;
-                    response.message = `${err}`;
-                    this.sendResponse(response);
-                });
-        }
+            .on('error', err => {
+                response.success = false;
+                response.message = `${err}`;
+                this.sendResponse(response);
+            });
     }
 
     protected customRequest(command: string, response: DebugProtocol.Response, args: any): void {
