@@ -227,8 +227,10 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                 else if (i < stacks.length - 1) {
                     continue;
                 }
-                let source = new Source(stack.file, fullFilename);
-                stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
+                if (fullFilename !== "") {
+                    let source = new Source(stack.file, fullFilename);
+                    stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
+                }
             }
             response.body = {
                 stackFrames: stackFrames,
