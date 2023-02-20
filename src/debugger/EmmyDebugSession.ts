@@ -312,7 +312,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             const node = this.handles.get(args.variablesReference);
             const children = await node.computeChildren(this);
             response.body = {
-                variables: children.map(v => v.toVariable(this)).filter((v,i,a)=>a.findIndex(v2=>(v.name === v2.name))===i)
+                variables: children.map(v => v.toVariable(this))
             };
         }
         this.sendResponse(response);
