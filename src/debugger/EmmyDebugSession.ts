@@ -27,7 +27,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     private evalIdCount = 0;
     private listenMode = false;
     private breakpoints: proto.IBreakPoint[] = [];
-    private extensionPath: string = '';
+    public extensionPath: string = '';
     private codePaths: string[] = [];
 
     handles = new Handles<IEmmyStackNode>();
