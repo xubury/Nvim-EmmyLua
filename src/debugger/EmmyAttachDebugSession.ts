@@ -4,6 +4,7 @@ import * as proto from "./EmmyDebugProto";
 import { EmmyDebugSession } from "./EmmyDebugSession";
 import { OutputEvent } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
+import { join, dirname, normalize } from "path";
 
 
 interface EmmyAttachDebugArguments extends DebugProtocol.AttachRequestArguments {
@@ -31,7 +32,7 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
     }
 
     async attachRequest(response: DebugProtocol.AttachResponse, args: EmmyAttachDebugArguments) {
-        this.extensionPath = args.extensionPath;
+        this.extensionPath = normalize(join(dirname(process.argv[1]), "..", ".."));;
         this.ext = args.ext;
         this.pid = args.pid;
         this.captureLog = args.captureLog;
