@@ -28,7 +28,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     private listenMode = false;
     private breakpoints: proto.IBreakPoint[] = [];
     protected extensionPath: string = '';
-    private codePaths: string[] = [];
+    protected codePaths: string[] = [];
 
     handles = new Handles<IEmmyStackNode>();
 
@@ -181,9 +181,9 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             for (let i = 0; i < stacks.length; i++) {
                 const stack = stacks[i];
                 let fullFilename = "";
-                let filename = stack.file;
+                let filename = normalize(stack.file);
                 if (stack.line >= 0) {
-                    if ( filename[0] == "." && (filename[1] == "/" || filename[1] == "\\")) {
+                    if (filename[0] == "." && (filename[1] == "/" || filename[1] == "\\")) {
                         filename = filename.substring(2);
                     }
                     for (let j = 0; j < this.codePaths.length; j++) {
@@ -198,7 +198,9 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                 }
                 if (fullFilename !== "") {
                     let source = new Source(stack.file, fullFilename);
-                    stackFrames.push(new StackFrame(stack.level, stack.functionName, source, stack.line));
+                    let stackFrame = new StackFrame(stack.level, stack.functionName, source, stack.line)
+                    stackFrame.name = stack.file
+                    stackFrames.push(stackFrame);
                 }
             }
             response.body = {

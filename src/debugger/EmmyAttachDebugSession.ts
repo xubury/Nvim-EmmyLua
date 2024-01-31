@@ -7,7 +7,7 @@ import { DebugProtocol } from "vscode-debugprotocol";
 
 
 interface EmmyAttachDebugArguments extends DebugProtocol.AttachRequestArguments {
-    sourcePaths: string[];
+    codePaths: string[];
     ext: string[];
     pid: number;
     captureLog?: boolean;
@@ -30,15 +30,18 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
     }
 
     async attachRequest(response: DebugProtocol.AttachResponse, args: EmmyAttachDebugArguments) {
-        this.printConsole(this.extensionPath)
         this.ext = args.ext;
         this.pid = args.pid;
+        this.codePaths = args.codePaths;
         this.captureLog = args.captureLog;
+        if (this.pid == 0) {
+            return
+        }
 
         await this.attach();
         
         // send resp
-        const client = net.connect(this.getPort(args.pid), 'localhost')
+        const client = net.connect(this.getPort(args.pid), '127.0.0.1')
             .on('connect', () => {
                 this.sendResponse(response);
                 this.onConnect(client);
