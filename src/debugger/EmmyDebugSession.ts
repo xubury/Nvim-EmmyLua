@@ -3,7 +3,7 @@ import * as readline from 'readline';
 import * as proto from "./EmmyDebugProto";
 import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from "vscode-debugprotocol";
-import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent } from "vscode-debugadapter";
+import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, ContinuedEvent } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { join, dirname, normalize, isAbsolute, parse } from "path";
@@ -389,6 +389,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
 
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
         this.sendDebugAction(response, proto.DebugAction.Continue);
+        this.sendEvent(new ContinuedEvent(args.threadId))
     }
 
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
