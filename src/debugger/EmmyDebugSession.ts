@@ -175,8 +175,8 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     }
 
     protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): Promise<void> {
+        const stackFrames: StackFrame[] = [];
         if (this.breakNotify) {
-            const stackFrames: StackFrame[] = [];
             const stacks = this.breakNotify.stacks;
             for (let i = 0; i < stacks.length; i++) {
                 const stack = stacks[i];
@@ -203,11 +203,11 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                     stackFrames.push(stackFrame);
                 }
             }
-            response.body = {
-                stackFrames: stackFrames,
-                totalFrames: stackFrames.length
-            };
         }
+        response.body = {
+            stackFrames: stackFrames,
+            totalFrames: stackFrames.length
+        };
         this.sendResponse(response);
     }
     protected _findFile(startPath: string, file: string): string {
