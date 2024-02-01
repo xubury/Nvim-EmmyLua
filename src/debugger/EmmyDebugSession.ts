@@ -1,11 +1,12 @@
 import * as net from "net";
 import * as readline from 'readline';
+import * as cp from "child_process";
 import * as proto from "./EmmyDebugProto";
 import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, InitializedEvent, Breakpoint, OutputEvent, ContinuedEvent } from "vscode-debugadapter";
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
-import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join, dirname, normalize, isAbsolute, parse } from "path";
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
@@ -187,17 +188,9 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                 let fullFilename = "";
                 let filename = normalize(stack.file);
                 if (stack.line >= 0) {
-                    if (filename[0] == "." && (filename[1] == "/" || filename[1] == "\\")) {
-                        filename = filename.substring(2);
-                    }
                     for (let j = 0; j < this.codePaths.length; j++) {
-                        fullFilename = await this._findFile(this.codePaths[j], filename);
+                        fullFilename = await this._findFile(this.codePaths[j], filename)
                         if (fullFilename !== "") {
-                            break;
-                        }
-                        const r = this._fileCache.get(filename)
-                        if (r) {
-                            fullFilename = r
                             break
                         }
                     }
@@ -221,7 +214,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
         if (isAbsolute(file)) {
             return file;
         }
-        const r = this._fileCache.get(file)
+        let r = this._fileCache.get(file)
         if (r) {
             return r;
         }
@@ -230,26 +223,37 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             this.sendEvent(new OutputEvent(`fromDir:ERROR:startPath:${startPath},filter:${file}.\n`));
             return "";
         }
-        var files = readdirSync(startPath);
-        for (var i = 0; i < files.length; i++) {
-            var filename = join(startPath, files[i]);
-            var stat = lstatSync(filename);
-            if (stat.isDirectory()) {
-                this._findFile(filename, file); //recurse
-            } else if (!this.ext.includes(parse(files[i]).ext)) {
-                // skip non-target file
-                continue;
-            }
-            else if (filename.indexOf(file) >= 0) {
-                // match filename
-                // cache max match filename
-                const r = this._fileCache.get(file);
-                if (r && r.length < filename.length) {
-                    this._fileCache.set(file, filename);
-                } else {
-                    this._fileCache.set(file, filename);
+        const args = [
+            'fd',
+            parse(file).base,
+            startPath
+        ];
+        if (!this._fileCache.has(file)) {
+            await new Promise<void>((r, c) => { cp.exec(args.join(" "), {  }, (err, stdout, stderr) => {
+                let res : string[] = []
+                res = stdout.split("\n")
+                for (let k = 0; k < res.length; k++) {
+                    if (res[k].indexOf(file) >= 0) {
+                        // match filename
+                        // cache max match filename
+                        const r = this._fileCache.get(file);
+                        if (r && r.length < res[k].length) {
+                            this._fileCache.set(file, res[k]);
+                        } else {
+                            this._fileCache.set(file, res[k]);
+                        }
+                    }
                 }
-            }
+                r()
+            }) .on('close', (code) => {
+                    c(`Exit code = ${code}`);
+                });
+            })
+        }
+
+        r = this._fileCache.get(file)
+        if (r) {
+            return r;
         }
 
         return ""
