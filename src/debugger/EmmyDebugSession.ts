@@ -7,6 +7,7 @@ import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, Ini
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { join, dirname, normalize, isAbsolute, parse } from "path";
+import { globSync } from 'glob'
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
     extensionPath: string;
@@ -178,6 +179,10 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
         const stackFrames: StackFrame[] = [];
         if (this.breakNotify) {
             const stacks = this.breakNotify.stacks;
+            let ignore = [];
+            for (let i = 0; i < this.ext.length; i++) {
+                ignore[i] = "!" + this.ext[i]
+            }
             for (let i = 0; i < stacks.length; i++) {
                 const stack = stacks[i];
                 let fullFilename = "";
@@ -187,13 +192,12 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                         filename = filename.substring(2);
                     }
                     for (let j = 0; j < this.codePaths.length; j++) {
-                        fullFilename = await this._findFile(this.codePaths[j], filename);
-                        if (fullFilename !== "") {
-                            break;
+                        // fullFilename = await this._findFile(this.codePaths[j], filename);
+                        const res = globSync(filename, { cwd: this.codePaths[j], ignore : ignore })
+                        if (res.length > 0) {
+                            fullFilename = res[0]
                         }
-                        const r = this._fileCache.get(filename);
-                        if (r) {
-                            fullFilename = r;
+                        if (fullFilename !== "") {
                             break;
                         }
                     }
