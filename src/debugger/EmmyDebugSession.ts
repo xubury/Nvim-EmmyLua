@@ -44,6 +44,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             supportTerminateDebuggee: true,
             supportsLogPoints: true,
             supportsHitConditionalBreakpoints: true,
+            supportsSetExpression: true,
             // supportsDelayedStackTraceLoading: true,
             // supportsCompletionsRequest: true
         };
@@ -203,12 +204,12 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                 stackFrame.name = stack.file
                 stackFrames.push(stackFrame);
             }
+            response.body = {
+                stackFrames: stackFrames,
+                totalFrames: stackFrames.length
+            };
+            this.sendResponse(response);
         }
-        response.body = {
-            stackFrames: stackFrames,
-            totalFrames: stackFrames.length
-        };
-        this.sendResponse(response);
     }
     protected async _findFile(startPath: string, file: string): Promise<string> {
         if (isAbsolute(file)) {
@@ -297,7 +298,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): Promise<void> {
-        const evalResp = await this.eval(args.expression, 0);
+        const evalResp = await this.eval(args.expression, 0, 1, args.frameId);
         if (evalResp.success) {
             const emmyVar = new EmmyVariable(evalResp.value);
             const variable = emmyVar.toVariable(this);
@@ -317,14 +318,14 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
         this.sendResponse(response);
     }
 
-    async eval(expr: string, cacheId: number, depth: number = 1): Promise<proto.IEvalRsp> {
+    async eval(expr: string, cacheId: number, depth: number = 1, stackLevel = -1): Promise<proto.IEvalRsp> {
         const req: proto.IEvalReq = {
             cmd: proto.MessageCMD.EvalReq,
             seq: this.evalIdCount++,
-            stackLevel: this.currentFrameId,
-            expr: expr,
-            depth: depth,
-            cacheId: cacheId
+            stackLevel: stackLevel >= 0 ? stackLevel: this.currentFrameId,
+            expr,
+            depth,
+            cacheId
         };
         this.sendMessage(req);
         return new Promise<proto.IEvalRsp>((resolve, reject) => {
@@ -365,6 +366,50 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             this.breakpoints = this.breakpoints.concat(bpsProto);
         }
         this.sendBreakpoints();
+        this.sendResponse(response);
+    } 
+
+    async setEval(expr: string, value: string, cacheId: number, depth: number = 1, stackLevel = -1): Promise<proto.IEvalRsp> {
+        const req: proto.IEvalReq = {
+            cmd: proto.MessageCMD.EvalReq,
+            seq: this.evalIdCount++,
+            stackLevel: stackLevel >= 0 ? stackLevel : this.currentFrameId,
+            expr,
+            depth,
+            cacheId,
+            value,
+            setValue: true,
+        };
+        this.sendMessage(req);
+        return new Promise<proto.IEvalRsp>((resolve, reject) => {
+            const listener = (msg: proto.IEvalRsp) => {
+                if (msg.seq === req.seq) {
+                    this.removeListener('onEvalRsp', listener);
+                    resolve(msg);
+                }
+            };
+            this.on('onEvalRsp', listener);
+        });
+    }
+
+    protected async setExpressionRequest(response: DebugProtocol.SetExpressionResponse, args: DebugProtocol.SetExpressionArguments, request?: DebugProtocol.Request): Promise<void> {
+        const evalResp = await this.setEval(args.expression, args.value,0, 1, args.frameId);
+        if (evalResp.success) {
+            const emmyVar = new EmmyVariable(evalResp.value);
+            const variable = emmyVar.toVariable(this);
+            response.body = {
+                value: variable.value,
+                type: variable.type,
+                variablesReference: variable.variablesReference
+            };
+        }
+        else {
+            response.body = {
+                value: evalResp.error,
+                type: 'string',
+                variablesReference: 0
+            };
+        }
         this.sendResponse(response);
     }
 

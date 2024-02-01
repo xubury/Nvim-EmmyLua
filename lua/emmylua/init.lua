@@ -12,7 +12,7 @@ function M.get_attach_adapter()
         type = "executable",
         command = "node",
         args = { root_path .. "/out/debugger/EmmyAttachDebugAdapter.js" },
-        name = "lua",
+        name = "emmylua_attach",
     }
 end
 
@@ -21,7 +21,7 @@ function M.get_adapter()
         type = "executable",
         command = "node",
         args = { root_path .. "/out/debugger/EmmyDebugAdapter.js" },
-        name = "lua",
+        name = "emmylua",
     }
 end
 

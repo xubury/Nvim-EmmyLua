@@ -60,26 +60,46 @@ export class EmmyStackENV implements IEmmyStackNode {
 
 export class EmmyVariable implements IEmmyStackNode {
     private variable: DebugProtocol.Variable;
-
     constructor(
         private data: proto.IVariable,
         private parent?: EmmyVariable,
     ) {
         let value = this.data.value;
+        // vscode not implement this feature
+        // let presentationHint: DebugProtocol.VariablePresentationHint = {
+        //     kind: 'property',
+        //     attributes: []
+        // };
         switch (this.data.valueType) {
             case proto.ValueType.TSTRING:
                 value = `"${this.data.value}"`;
                 break;
+            //     presentationHint.attributes?.push('rawString');
+            //     break;
+            // case proto.ValueType.TFUNCTION:
+            //     presentationHint.kind = 'method';
+            //     break;
         }
         let name = this.data.name;
         switch (this.data.nameType) {
             case proto.ValueType.TSTRING:
+                // if (name.startsWith("_")) {
+                //     presentationHint.attributes?.push('private');
+                // }
+                // else {
+                //     presentationHint.attributes?.push('public');
+                // }
+
+                break;
+            case proto.ValueType.TNUMBER:
+                name = `[${name}]`;
+                // presentationHint.kind = 'data'
                 break;
             default:
                 name = `[${name}]`;
                 break;
         }
-        this.variable = { name: name, value: value, variablesReference: 0 };
+        this.variable = { name, value, variablesReference: 0 };
     }
 
     toVariable(ctx: IEmmyStackContext): DebugProtocol.Variable {
@@ -106,20 +126,23 @@ export class EmmyVariable implements IEmmyStackNode {
     }
 
     sortVariables(a: proto.IVariable, b: proto.IVariable): number {
-        const w1 = a.valueType > proto.ValueType.TTHREAD ? 0 : 1;
-        const w2 = b.valueType > proto.ValueType.TTHREAD ? 0 : 1;
-        if (w1 !== w2) {
-            return w1 - w2;
+        if (a.nameType < b.nameType) {
+            return -1;
+        } else if (a.nameType > b.nameType) {
+            return 1;
+        } else {
+            if (a.nameType == proto.ValueType.TNUMBER) {
+                return Number(a.name) - Number(b.name);
+            }
+            else {
+                return a.name.localeCompare(b.name);
+            }
         }
-        return a.name.localeCompare(b.name);
     }
 
     async computeChildren(ctx: IEmmyStackContext): Promise<IEmmyStackNode[]> {
         let children = this.data.children;
-        if (this.data.valueType === proto.ValueType.GROUP) {
-            children = this.data.children;
-        }
-        else {
+        if (this.data.valueType !== proto.ValueType.GROUP) {
             const evalResp = await ctx.eval(this.getExpr(), this.data.cacheId, 2);
             if (evalResp.success) {
                 children = evalResp.value.children;
