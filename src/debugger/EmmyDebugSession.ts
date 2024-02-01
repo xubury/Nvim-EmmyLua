@@ -187,7 +187,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                         filename = filename.substring(2);
                     }
                     for (let j = 0; j < this.codePaths.length; j++) {
-                        fullFilename = this._findFile(this.codePaths[j], filename);
+                        fullFilename = await this._findFile(this.codePaths[j], filename);
                         if (fullFilename !== "") {
                             break;
                         }
@@ -210,7 +210,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
         };
         this.sendResponse(response);
     }
-    protected _findFile(startPath: string, file: string): string {
+    protected async _findFile(startPath: string, file: string): Promise<string> {
         if (isAbsolute(file)) {
             return file;
         }
