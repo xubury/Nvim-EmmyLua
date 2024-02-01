@@ -283,10 +283,12 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): Promise<void> {
         if (this.breakNotify) {
             const node = this.handles.get(args.variablesReference);
-            const children = await node.computeChildren(this);
-            response.body = {
-                variables: children.map(v => v.toVariable(this))
-            };
+            if (node) {
+                const children = await node.computeChildren(this);
+                response.body = {
+                    variables: children.map(v => v.toVariable(this))
+                };
+            }
         }
         this.sendResponse(response);
     }
