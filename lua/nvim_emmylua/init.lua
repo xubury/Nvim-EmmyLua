@@ -7,7 +7,7 @@ end
 
 local root_path = vim.fs.normalize(script_path() .. "../..")
 
-function M.get_attach_adaptor()
+function M.get_attach_adapter()
     return {
         type = "executable",
         command = "node",
@@ -16,7 +16,7 @@ function M.get_attach_adaptor()
     }
 end
 
-function M.get_adaptor()
+function M.get_adapter()
     return {
         type = "executable",
         command = "node",
