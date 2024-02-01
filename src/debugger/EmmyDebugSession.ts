@@ -235,13 +235,13 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             var filename = join(startPath, files[i]);
             var stat = lstatSync(filename);
             if (stat.isDirectory()) {
-                return this._findFile(filename, file); //recurse
+                this._findFile(filename, file); //recurse
             } else if (!this.ext.includes(parse(files[i]).ext)) {
                 // skip non-target file
                 continue;
             }
-            // match filename
-            if (filename.indexOf(file) >= 0) {
+            else if (filename.indexOf(file) >= 0) {
+                // match filename
                 // cache max match filename
                 const r = this._fileCache.get(file);
                 if (r && r.length < filename.length) {
