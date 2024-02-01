@@ -34,6 +34,9 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
         this.pid = args.pid;
         this.codePaths = args.codePaths;
         this.captureLog = args.captureLog;
+        if (!this.pid) {
+            return
+        }
         if (this.pid == 0) {
             return
         }

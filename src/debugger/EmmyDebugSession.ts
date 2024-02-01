@@ -191,6 +191,11 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                         if (fullFilename !== "") {
                             break;
                         }
+                        const r = this._fileCache.get(filename);
+                        if (r) {
+                            fullFilename = r;
+                            break;
+                        }
                     }
                 }
                 else if (i < stacks.length - 1) {
@@ -228,7 +233,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             var filename = join(startPath, files[i]);
             var stat = lstatSync(filename);
             if (stat.isDirectory()) {
-                await this._findFile(filename, file); //recurse
+                this._findFile(filename, file); //recurse
                 continue;
             } else if (!this.ext.includes(parse(files[i]).ext)) {
                 // skip non-target file
@@ -243,13 +248,6 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                 } else {
                     this._fileCache.set(file, filename);
                 }
-            }
-        }
-
-        {
-            const r = this._fileCache.get(file);
-            if (r) {
-                return r;
             }
         }
 
