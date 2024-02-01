@@ -229,7 +229,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             startPath
         ];
         if (!this._fileCache.has(file)) {
-            await new Promise<void>((r, c) => { cp.exec(args.join(" "), {  }, (err, stdout, stderr) => {
+            await new Promise<void>((r, c) => { cp.exec(args.join(" "), { windowsHide : true  }, (err, stdout, stderr) => {
                 let res : string[] = []
                 res = stdout.split("\n")
                 for (let k = 0; k < res.length; k++) {

@@ -68,7 +68,7 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
         ];
 
         return new Promise<WinArch>((r, c) => {
-            cp.exec(args.join(" "), { cwd: cwd })
+            cp.exec(args.join(" "), { cwd: cwd, windowsHide : true })
                 .on('close', (code) => {
                     r(code === 0 ? WinArch.X64 : WinArch.X86);
                 })
@@ -95,7 +95,7 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
         }
 
         return new Promise<void>((r, c) => {
-            cp.exec(args.join(" "), { cwd: cwd }, (err, stdout, stderr) => {
+            cp.exec(args.join(" "), { cwd: cwd, windowsHide : true }, (err, stdout, stderr) => {
                 this.sendEvent(new OutputEvent(stdout));
             })
                 .on('close', (code) => {
@@ -108,7 +108,7 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
                                 `${this.pid}`,
                             ] 
                             cp.spawn(`wt`, captureArgs, {
-                                cwd: cwd
+                                cwd: cwd, windowsHide : true
                             });
                         }
                         r();
