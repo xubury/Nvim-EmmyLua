@@ -7,7 +7,6 @@ import { StoppedEvent, StackFrame, Thread, Source, Handles, TerminatedEvent, Ini
 import { EmmyStack, IEmmyStackNode, EmmyVariable, IEmmyStackContext, EmmyStackENV } from "./EmmyDebugData";
 import { readFileSync, existsSync, readdirSync, lstatSync } from "fs";
 import { join, dirname, normalize, isAbsolute, parse } from "path";
-import { globSync } from 'glob'
 
 interface EmmyDebugArguments extends DebugProtocol.AttachRequestArguments {
     extensionPath: string;
@@ -192,25 +191,24 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
                         filename = filename.substring(2);
                     }
                     for (let j = 0; j < this.codePaths.length; j++) {
-                        // fullFilename = await this._findFile(this.codePaths[j], filename);
-                        const res = globSync(filename, { cwd: this.codePaths[j], ignore : ignore })
-                        if (res.length > 0) {
-                            fullFilename = res[0]
-                        }
+                        fullFilename = await this._findFile(this.codePaths[j], filename);
                         if (fullFilename !== "") {
                             break;
+                        }
+                        const r = this._fileCache.get(filename)
+                        if (r) {
+                            fullFilename = r
+                            break
                         }
                     }
                 }
                 else if (i < stacks.length - 1) {
                     continue;
                 }
-                if (fullFilename !== "") {
-                    let source = new Source(stack.file, fullFilename);
-                    let stackFrame = new StackFrame(stack.level, stack.functionName, source, stack.line)
-                    stackFrame.name = stack.file
-                    stackFrames.push(stackFrame);
-                }
+                let source = new Source(stack.file, fullFilename);
+                let stackFrame = new StackFrame(stack.level, stack.functionName, source, stack.line)
+                stackFrame.name = stack.file
+                stackFrames.push(stackFrame);
             }
         }
         response.body = {
@@ -237,8 +235,7 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             var filename = join(startPath, files[i]);
             var stat = lstatSync(filename);
             if (stat.isDirectory()) {
-                this._findFile(filename, file); //recurse
-                continue;
+                return this._findFile(filename, file); //recurse
             } else if (!this.ext.includes(parse(files[i]).ext)) {
                 // skip non-target file
                 continue;
