@@ -233,15 +233,18 @@ export class EmmyDebugSession extends DebugSession implements IEmmyStackContext 
             await new Promise<void>((r, c) => { cp.exec(args.join(" "), { windowsHide : true  }, (err, stdout, stderr) => {
                 let res : string[] = []
                 res = stdout.split("\n")
-                for (let k = 0; k < res.length; k++) {
-                    if (res[k].indexOf(file) >= 0) {
+                for (let i = 0; i < res.length; i++) {
+                    if(!this.ext.includes(parse(res[i]).ext)) {
+                        continue;
+                    }
+                    if (res[i].indexOf(file) >= 0) {
                         // match filename
                         // cache max match filename
                         const r = this._fileCache.get(file);
-                        if (r && r.length < res[k].length) {
-                            this._fileCache.set(file, res[k]);
+                        if (r && r.length < res[i].length) {
+                            this._fileCache.set(file, res[i]);
                         } else {
-                            this._fileCache.set(file, res[k]);
+                            this._fileCache.set(file, res[i]);
                         }
                     }
                 }
