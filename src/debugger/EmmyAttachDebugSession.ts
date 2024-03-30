@@ -34,10 +34,10 @@ export class EmmyAttachDebugSession extends EmmyDebugSession {
         this.pid = args.pid;
         this.codePaths = args.codePaths;
         this.captureLog = args.captureLog;
-        if (!this.pid) {
-            return
-        }
-        if (this.pid == 0) {
+        if (!this.pid || this.pid == 0) {
+            response.success = false;
+            response.message = `no pid`;
+            this.sendResponse(response);
             return
         }
 
